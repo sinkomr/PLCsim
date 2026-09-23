@@ -378,7 +378,7 @@
         else {
           const api = {
             def,
-            out: (a) => { const r = this.ref(a); return r ? (eng.outputs[r.word] >> r.bit) & 1 : 0; },
+            out: (a) => { const r = this.ref(a); return r ? ((eng.outputs[r.word] | eng.outSeen[r.word]) >> r.bit) & 1 : 0; },
             set: (a, v) => { const r = this.ref(a); if (!r) return; if (v) eng.inputs[r.word] |= 1 << r.bit; else eng.inputs[r.word] &= ~(1 << r.bit); },
             get: (a) => { const r = this.ref(a); return r ? (eng.inputs[r.word] >> r.bit) & 1 : 0; },
             running: () => eng.mode === 'RUN',
@@ -515,6 +515,7 @@
       if (this.scene && this.scene.update) {
         try { this.scene.update(simMs); } catch (e) { console.error(e); this.scene = null; }
       }
+      eng.outSeen.set(eng.outputs); // pulses have been shown; start collecting again
       const I = eng.dt.file(1).data;
       document.querySelectorAll('#ioStrip [data-led]').forEach((el) => {
         const r = eng.dt.tryParse(el.dataset.led);

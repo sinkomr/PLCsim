@@ -35,6 +35,7 @@
       const nIn = this.dt.file(1).data.length, nOut = this.dt.file(0).data.length;
       this.inputs = new Int16Array(nIn);   // physical input terminals
       this.outputs = new Int16Array(nOut); // physical output terminals
+      this.outSeen = new Int16Array(nOut); // outputs OR-ed since the display last looked (catches 1-scan pulses)
       this.forces = new Map();             // address text → {ref, value}
       this.mode = 'PROGRAM';
       this.fault = null;
@@ -72,7 +73,7 @@
           this._acc = 0;
         }
       }
-      if (mode === 'PROGRAM') this.outputs.fill(0); // outputs off out of RUN
+      if (mode === 'PROGRAM') { this.outputs.fill(0); this.outSeen.fill(0); } // outputs off out of RUN
       this.mode = mode;
       this._setModeBits();
       this.emit('mode', mode);
@@ -93,6 +94,7 @@
       this.status[6] = code;     // S:6 major error code
       this.mode = 'FAULT';
       this.outputs.fill(0);
+      this.outSeen.fill(0);
       this._setModeBits();
       this.emit('fault', this.fault);
     }
@@ -185,6 +187,7 @@
         this.outputs.set(O);
         for (const { ref, value } of this.forces.values())
           if (ref.file === 0) { if (value) this.outputs[ref.word] |= 1 << ref.bit; else this.outputs[ref.word] &= ~(1 << ref.bit); }
+        for (let i = 0; i < this.outputs.length; i++) this.outSeen[i] |= this.outputs[i];
       }
 
       // Housekeeping

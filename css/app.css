@@ -277,7 +277,9 @@ table.dt td.dsc { font-family: var(--sans); color: var(--muted); max-width: 260p
 .scene-msg.bad { color: var(--red); font-weight: 600; }
 .scene-msg.warn { color: var(--amber); }
 .scene-btn { height: 26px; padding: 0 9px; border: 1px solid var(--line); background: var(--panel2); border-radius: 5px; cursor: pointer; font-size: 12px; margin: 4px 4px 0 0; }
-.scene-btn.active, .scene-btn[aria-pressed='true'] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.scene-controls { display: flex; flex-wrap: wrap; gap: 0; margin-top: 4px; }
+.scene-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.scene-btn.on, .scene-btn.active, .scene-btn[aria-pressed='true'] { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
 
 /* operator panel & I/O */
 .opanel { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px; background: var(--panel2); border-radius: 8px; }
