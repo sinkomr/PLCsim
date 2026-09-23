@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLCsim — Ladder Logic Trainer</title>
+<meta name="description" content="Learn and practise RSLogix 500-style ladder logic for the MicroLogix 1000 and SLC 500 in your browser: lessons, a ladder editor, a scan-accurate simulator, animated machines and auto-graded challenges.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232563eb'/><path d='M4 16h7M21 16h7M11 9v14M21 9v14' stroke='white' stroke-width='3' fill='none'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top">
+  <button class="btn ghost only-narrow" id="btnSide" title="Lessons & challenges">☰ Learn</button>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M4 16h7M21 16h7M11 9v14M21 9v14" stroke="#fff" stroke-width="3" fill="none"/></svg>
+    PLCsim <small>ladder logic trainer</small>
+  </div>
+  <span class="slot-chip hidden" id="slotChip"></span>
+  <select class="sel" id="profileSel" title="Controller model"></select>
+  <div class="spacer"></div>
+  <div class="group">
+    <span class="mode-led" id="modeLed"></span>
+    <div class="seg" id="modeSeg" role="group" aria-label="Processor mode">
+      <button data-mode="PROGRAM" title="Program mode: edit the program. Outputs are off.">PROGRAM</button>
+      <button data-mode="RUN" title="Run mode: the processor scans your program continuously.">RUN</button>
+    </div>
+    <button class="btn small" id="btnStep" title="Test mode: run exactly one scan (outputs stay off)">Step scan</button>
+    <select class="sel" id="speedSel" title="Simulation speed">
+      <option value="1">1× real time</option>
+      <option value="0.25">¼× slow</option>
+      <option value="0.05">1/20× slow-mo</option>
+      <option value="4">4× fast</option>
+    </select>
+    <span class="status-txt" id="statusTxt"></span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="btnVerify" title="Check the program for errors">✓ Verify</button>
+  <div class="menu">
+    <button class="btn" id="btnFile">File ▾</button>
+    <div class="menu-list hidden" id="fileMenu">
+      <button data-act="new">New program</button>
+      <button data-act="open">Open file…</button>
+      <button data-act="save">Save to file (.plcsim.json)</button>
+      <hr>
+      <button data-act="text">View / edit program as text…</button>
+      <button data-act="exportText">Export rung listing (.txt)</button>
+      <hr>
+      <button data-act="sandbox">Go to my free-play project</button>
+      <button data-act="resetProgress">Reset lesson progress…</button>
+    </div>
+  </div>
+  <button class="btn ghost" id="btnTheme" title="Light / dark theme">◐</button>
+  <button class="btn ghost" id="btnHelp" title="How to use PLCsim">?</button>
+  <input type="file" id="fileInput" accept=".json,.plcsim,.txt" class="hidden">
+</header>
+<div class="fault-bar hidden" id="faultBar">
+  <strong id="faultCode">FAULT</strong><span class="msg" id="faultMsg"></span>
+  <button class="btn small" id="btnClearFault">Clear fault → Program mode</button>
+</div>
+
+<div class="layout" id="layout">
+  <aside id="side">
+    <div class="tabs" id="sideTabs">
+      <button data-tab="lessons" class="active">Lessons</button>
+      <button data-tab="challenges">Challenges</button>
+      <button data-tab="reference">Reference</button>
+      <button class="right" id="btnWide" title="Wider reading pane">⇔</button>
+      <button class="only-narrow" id="btnSideClose" title="Close">✕</button>
+    </div>
+    <div class="side-body" id="sideBody"></div>
+  </aside>
+
+  <section id="center">
+    <div id="palette"></div>
+    <div id="filetabs"></div>
+    <div id="ladderWrap"><div id="ladder"></div></div>
+    <div id="bottomResize" title="Drag to resize"></div>
+    <div id="bottom">
+      <div class="tabs" id="bottomTabs">
+        <button data-tab="data" class="active">Data Table</button>
+        <button data-tab="xref">Cross Reference</button>
+        <button data-tab="verify">Verify <span class="badge" id="verifyBadge">0</span></button>
+        <button data-tab="tests">Test Results</button>
+        <button class="right" id="btnBottomToggle" title="Collapse / expand">▾</button>
+      </div>
+      <div class="bottom-body" id="bottomBody"></div>
+    </div>
+  </section>
+
+  <aside id="right">
+    <div class="rp-section" id="props"></div>
+    <div class="rp-section" id="ioSection">
+      <h3><span class="grow">Machine / I/O</span><select class="sel" id="sceneSel" style="height:26px;font-size:12px"></select></h3>
+      <div id="sceneHost" class="scene-host"></div>
+      <div class="scene-msg" id="sceneMsg"></div>
+      <div id="opPanel"></div>
+      <div id="ioStrip"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="js/core/profiles.js"></script>
+<script src="js/core/datatable.js"></script>
+<script src="js/core/instructions.js"></script>
+<script src="js/core/program.js"></script>
+<script src="js/core/engine.js"></script>
+<script src="js/core/grader.js"></script>
+<script src="js/core/lint.js"></script>
+<script src="js/content/scene-defs.js"></script>
+<script src="js/content/lessons.js"></script>
+<script src="js/content/challenges.js"></script>
+<script src="js/content/reference.js"></script>
+<script src="js/scenes/registry.js"></script>
+<script src="js/scenes/motor.js"></script>
+<script src="js/scenes/fwdrev.js"></script>
+<script src="js/scenes/traffic.js"></script>
+<script src="js/scenes/parking.js"></script>
+<script src="js/scenes/tank.js"></script>
+<script src="js/scenes/conveyor.js"></script>
+<script src="js/ui/ladder.js"></script>
+<script src="js/ui/editor.js"></script>
+<script src="js/ui/panels.js"></script>
+<script src="js/ui/learn.js"></script>
+<script src="js/ui/app.js"></script>
+</body>
+</html>

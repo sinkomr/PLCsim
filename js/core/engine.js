@@ -205,7 +205,6 @@
       }
       if (this.mode !== 'TEST') return { ok: false, errors: [{ msg: 'Step scan works from Program or Test mode' }] };
       this.scan();
-      this.simTime; // time advances inside scan()
       return { ok: true };
     }
 

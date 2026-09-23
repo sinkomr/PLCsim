@@ -315,5 +315,18 @@ test('grader reports compile errors', () => {
   if (!/errors/.test(r.error || '')) throw new Error('expected error');
 });
 
+// ---------------- verify / lint ----------------
+require(path.join(__dirname, '..', 'js', 'core', 'lint.js'));
+test('lint warns about double coils, stray latches, shared one-shots, unwired I/O', () => {
+  const e = make(['XIC I:0/0 OTE O:0/0', 'XIC I:0/1 OTE O:0/0', 'XIC I:0/2 OTL B3:0/0', 'XIC I:0/3 OSR B3:1/0 OTE B3:1/0', 'XIC I:0/12 OTE O:0/1']);
+  const msgs = PLC.lint(e.project, e.dt, e.profile).issues.map((i) => i.msg).join('\n');
+  for (const re of [/double coil/, /never unlatched/, /One-shot storage bit/, /I:0\/12 is not wired/])
+    if (!re.test(msgs)) throw new Error('missing warning ' + re + '\n' + msgs);
+});
+test('lint is quiet on a clean program', () => {
+  const e = make(['BST XIC I:0/0 NXB XIC O:0/0 BND XIC I:0/1 OTE O:0/0']);
+  eq(PLC.lint(e.project, e.dt, e.profile).issues.length, 0);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
