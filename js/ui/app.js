@@ -108,40 +108,31 @@
       this.learn.render();
     }
 
-    makeProject(rungTexts, desc, scene, name, comments) {
-      const p = PLC.newProject(this.engine.profile.id);
-      const prof = this.engine.profile;
-      p.name = name || 'Untitled';
+    // Build a project from lesson/challenge content ({rungs, subs, comments, desc}).
+    makeProject(spec, scene, name) {
+      const p = PLC.buildContentProject(Object.assign({}, spec, { name }), this.engine.profile.id);
       p.scene = scene || 'trainer';
-      p.files[0].rungs = rungTexts.length ? rungTexts.map((t, i) => Object.assign(PLC.parseRung(PLC.remapText(t, prof), prof), { comment: (comments && comments[i]) || '' })) : [{ comment: '', items: [] }];
-      p.desc = PLC.remapKeys(desc || {}, prof);
       return p;
     }
 
     loadExample(ex, lesson) {
-      this.openSlot('ex:' + ex.id, () => this.makeProject(ex.rungs || [], ex.desc, ex.scene, 'Example: ' + ex.title, ex.comments), true);
+      this.openSlot('ex:' + ex.id, () => this.makeProject(ex, ex.scene, 'Example: ' + ex.title), true);
       this.toast(`Loaded "${ex.title}". Press RUN to try it.`);
       if (ex.notes) this.toastLong(ex.notes);
       void lesson;
     }
-    startChallenge(c, fresh, rungs) {
-      const prof = this.engine.profile;
-      this.openSlot('ch:' + c.id, () => {
-        const p = this.makeProject(rungs || c.starter || [], {}, c.scene, 'Challenge: ' + c.title);
-        p.desc = Object.assign(PLC.remapKeys(c.io || {}, prof), p.desc);
-        return p;
-      }, fresh);
+    startChallenge(c, fresh, useSolution) {
+      this.openSlot('ch:' + c.id, () => this.makeProject({
+        rungs: useSolution ? c.solution : c.starter || [],
+        subs: useSolution ? c.solutionSubs : c.starterSubs,
+        desc: c.io,
+      }, c.scene, 'Challenge: ' + c.title), fresh);
       this.panels.show('tests');
     }
     runChallengeTests(c) {
       const prof = this.engine.profile;
       if (this.slot !== 'ch:' + c.id) this.startChallenge(c);
-      const t = c.test;
-      const test = {
-        init: PLC.remapKeys(t.init, prof),
-        watch: (t.watch || []).map((a) => PLC.remapIO(a, prof)),
-        steps: t.steps.map((s) => Object.assign({}, s, { set: PLC.remapKeys(s.set, prof), expect: PLC.remapKeys(s.expect, prof), during: PLC.remapKeys(s.during, prof) })),
-      };
+      const test = PLC.remapTest(c.test, prof);
       const labels = Object.assign({}, this.descAll(), PLC.remapKeys(c.io || {}, prof));
       const result = PLC.grade(this.project, this.engine.dt, test, labels);
       this.lastGrade = { id: c.id, title: c.title, result };
@@ -248,7 +239,7 @@
       if (this.slot === 'sandbox') chip.classList.add('hidden');
       else {
         chip.classList.remove('hidden');
-        chip.innerHTML = `${esc(this.project.name || this.slot)} <button id="chipBack">back to my project</button>`;
+        chip.innerHTML = `<span class="nm" title="${esc(this.project.name || this.slot)}">${esc(this.project.name || this.slot)}</span><button id="chipBack">back to my project</button>`;
         $('chipBack').onclick = () => this.openSlot('sandbox', () => this.demoProject());
       }
       const ps = $('profileSel');

@@ -52,7 +52,9 @@ The rung text format (`SOR … BST … NXB … BND … EOR`, e.g. `TON T4:0 1.0 
 - **Unconfirmed details**, where the Rockwell PDFs could not be checked directly:
   - the exact MicroLogix 1000 status-file length and the DIV-by-zero result (the simulator uses 32767);
   - whether the ML1000 supports S:2/14;
-  - exactly what happens to data on entering RUN (the simulator does no prescan and sets S:1/15 for the first scan);
+  - exactly what happens to data on entering RUN. The simulator clears every bit addressed by an OTE
+    (non-retentive outputs, as described for OTE in 1747-RM001) and sets S:1/15 for the first scan. It does
+    not reset timers or other data;
   - the ML1500 embedded I/O slot numbering.
 
   If your lab hardware behaves differently, trust the hardware and please open an issue.

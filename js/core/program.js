@@ -271,7 +271,8 @@
                 lbl.set(refs[0].value, ri);
               }
             }
-            if (sp.mn === 'SBR' && !(isTop && i === 0 && path.length === 0 && ri === 0)) err(n, p, 'SBR must be the first instruction of the first rung of a subroutine');
+            if (sp.mn === 'SBR' && f.num === 2) err(n, p, 'SBR belongs at the start of a subroutine file (LAD 3 and up), not in MAIN');
+            else if (sp.mn === 'SBR' && !(isTop && i === 0 && path.length === 0 && ri === 0)) err(n, p, 'SBR must be the first instruction of the first rung of a subroutine');
             const rec = { rcIn: false, rcOut: false, truth: 0 };
             recs.set(n, rec);
             count++;

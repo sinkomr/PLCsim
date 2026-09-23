@@ -68,6 +68,14 @@
         const c = this.compile();
         if (!c.ok) return { ok: false, errors: c.errors };
         if (this.mode === 'PROGRAM') {
+          // Non-retentive outputs: bits addressed by OTE instructions are
+          // cleared when the processor enters RUN (a sealed-in motor does not
+          // restart by itself).
+          PLC.forEachInstr(this.project, (n) => {
+            if (n.mn !== 'OTE') return;
+            const r = this.dt.tryParse(n.ops[0]);
+            if (r && r.kind === 'bit') this.dt.setBit(r, 0);
+          });
           this.status[1] |= 1 << 15; // S:1/15 first pass
           this.timerFrac.clear();
           this._acc = 0;

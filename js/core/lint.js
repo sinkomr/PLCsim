@@ -20,6 +20,10 @@
         if (r) push(r.text, { mn: sp.mn, op: o[1], k, file: f.num, rung: ri, node: n, path: p });
       });
     });
+    PLC.forEachInstr(project, (n, f, ri) => {
+      if (['EQU', 'NEQ', 'LES', 'LEQ', 'GRT', 'GEQ'].includes(n.mn) && PLC.parseConst(String(n.ops[0])) !== null)
+        out.push({ sev: 'warn', file: f.num, rung: ri, node: n, msg: `${n.mn}: Source A is a constant. RSLogix 500 expects Source A to be an address (put the constant in Source B).` });
+    });
     for (const f of project.files)
       f.rungs.forEach((r, ri) => { if (!r.items.length) out.push({ sev: 'warn', file: f.num, rung: ri, msg: 'Empty rung — it does nothing' }); });
 
@@ -29,7 +33,8 @@
       if (ote.length > 1)
         out.push({ sev: 'warn', file: ote[1].file, rung: ote[1].rung, node: ote[1].node, msg: `${a} is used by ${ote.length} OTE instructions (${ote.map(where).join(', ')}). Only the LAST one in the scan decides the bit — this is the classic "double coil" mistake. Use a branch on one rung instead.` });
       const lat = list.filter((u) => u.mn === 'OTL'), unl = list.filter((u) => u.mn === 'OTU');
-      if (ote.length && (lat.length || unl.length))
+      // (OTE in a subroutine + OTU in MAIN to clear it when the subroutine stops being called is a legitimate pattern)
+      if (ote.length && lat.concat(unl).some((u) => ote.some((o) => o.file === u.file)))
         out.push({ sev: 'warn', file: ote[0].file, rung: ote[0].rung, node: ote[0].node, msg: `${a} is driven by both OTE and OTL/OTU. The OTE will overwrite the latch every scan.` });
       if (lat.length && !unl.length && !a.startsWith('S:'))
         out.push({ sev: 'warn', file: lat[0].file, rung: lat[0].rung, node: lat[0].node, msg: `${a} is latched (OTL) but never unlatched (OTU) — once on, it stays on forever.` });

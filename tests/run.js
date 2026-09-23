@@ -315,6 +315,17 @@ test('grader reports compile errors', () => {
   if (!/errors/.test(r.error || '')) throw new Error('expected error');
 });
 
+test('OTE bits are cleared when entering RUN (seal-in drops out)', () => {
+  const e = run(make(['BST XIC I:0/0 NXB XIC O:0/0 BND XIC I:0/1 OTE O:0/0', 'XIC I:0/2 OTL B3:0/0']));
+  setIn(e, 'I:0/1', 1); setIn(e, 'I:0/0', 1); setIn(e, 'I:0/2', 1); e.scan();
+  setIn(e, 'I:0/0', 0); setIn(e, 'I:0/2', 0); e.scan(); eq(bit(e, 'O:0/0'), 1);
+  e.setMode('PROGRAM'); run(e); e.scan();
+  eq(bit(e, 'O:0/0'), 0, 'sealed output dropped'); eq(bit(e, 'B3:0/0'), 1, 'latch kept');
+});
+test('SBR is rejected in MAIN', () => {
+  if (!make(['SBR', 'OTE O:0/0']).compile().errors.some((x) => /subroutine file/.test(x.msg))) throw new Error('no error');
+});
+
 // ---------------- verify / lint ----------------
 require(path.join(__dirname, '..', 'js', 'core', 'lint.js'));
 test('lint warns about double coils, stray latches, shared one-shots, unwired I/O', () => {

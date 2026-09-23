@@ -192,11 +192,14 @@
         if (!app.progress.challenges[c.id] && !confirm('Look at a solution? Try the hints first — you learn more by getting it working yourself.')) return;
         const host = $('cSol');
         const rungs = (c.solution || []).map((t) => PLC.remapText(t, prof));
-        host.innerHTML = '<div class="ladder"></div><div class="row"><button class="btn small" id="cLoadSol">Load this solution into the editor</button></div><p class="prop-help">There is usually more than one correct answer — if yours passes the tests, it is right.</p>';
-        PLC.staticLadder(host.querySelector('.ladder'), rungs, prof, io, { width: Math.max(460, host.clientWidth - 20) });
+        const subs = Object.entries(c.solutionSubs || {});
+        host.innerHTML = `${subs.length ? '<h4>LAD 2 – MAIN</h4>' : ''}<div class="ladder" id="solMain"></div>${subs.map(([n]) => `<h4>LAD ${n}</h4><div class="ladder" data-sub="${n}"></div>`).join('')}<div class="row"><button class="btn small" id="cLoadSol">Load this solution into the editor</button></div><p class="prop-help">There is usually more than one correct answer — if yours passes the tests, it is right.</p>`;
+        const w = Math.max(460, host.clientWidth - 20);
+        PLC.staticLadder($('solMain'), rungs, prof, io, { width: w });
+        subs.forEach(([n, list]) => PLC.staticLadder(host.querySelector(`[data-sub="${n}"]`), list.map((t) => PLC.remapText(t, prof)), prof, io, { width: w }));
         $('cLoadSol').onclick = () => {
           if (!confirm('Replace your challenge program with this solution?')) return;
-          app.startChallenge(c, true, rungs);
+          app.startChallenge(c, true, true);
           this.render();
         };
       };
@@ -233,7 +236,9 @@
         <p>${ref.summary || esc(sp.help)}</p>
         ${ops ? `<h4>Operands</h4><ul>${ops}</ul>` : ''}
         ${ref.details || ''}
-        ${ref.example && ref.example.length ? `<h4>Example</h4><div class="ladder" data-rungs="${esc(ref.example.join('|'))}"></div>` : ''}
+        ${ref.avail ? `<div class="callout note">${esc(ref.avail)}</div>` : ''}
+        ${ref.example && ref.example.length ? `<h4>Example${ref.exampleSubs ? ' — LAD 2 (MAIN)' : ''}</h4><div class="ladder" data-rungs="${esc(ref.example.join('|'))}"></div>` : ''}
+        ${Object.entries(ref.exampleSubs || {}).map(([n, list]) => `<h4>LAD ${n}</h4><div class="ladder" data-rungs="${esc(list.join('|'))}"></div>`).join('')}
         ${ref.pitfalls && ref.pitfalls.length ? `<h4>Watch out for</h4><ul>${ref.pitfalls.map((p) => `<li>${p}</li>`).join('')}</ul>` : ''}
       </div>`;
       $('rBack').onclick = () => { this.view = null; this.tab = 'reference'; this.render(); };
