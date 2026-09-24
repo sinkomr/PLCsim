@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scenes smoke test</title>
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f2f4f7; --fg: #1d2430; --muted: #8a94a3; --accent: #2563eb;
+    --on: #16a34a; --red: #dc2626; --amber: #f59e0b; --water: #3b82f6; --border: #d9dee5;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1318; --panel: #171c23; --fg: #e6e9ee; --muted: #7d8795; --accent: #60a5fa;
+    --on: #22c55e; --red: #ef4444; --amber: #fbbf24; --water: #38bdf8; --border: #2a313b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+  h1 { font-size: 18px; margin: 0 12px 0 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; min-width: 0; }
+  .card h2 { font-size: 15px; margin: 0 0 8px; }
+  .host { width: 100%; }
+  .io { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 12px; }
+  .io label { display: inline-flex; gap: 4px; align-items: center; }
+  .inputs { font: 12px ui-monospace, monospace; color: var(--muted); margin-top: 6px; }
+  .msg { min-height: 18px; font-size: 12px; margin-top: 4px; }
+  .msg.warn { color: var(--amber); } .msg.bad { color: var(--red); font-weight: 600; } .msg.info { color: var(--muted); }
+  .scene-btn { font: 12px system-ui, sans-serif; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--fg); cursor: pointer; }
+  .scene-btn:hover { border-color: var(--accent); }
+  .scene-btn:disabled { opacity: .5; cursor: default; }
+  .scene-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .narrow .grid { grid-template-columns: 320px 320px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PLCsim scenes — smoke test</h1>
+  <label><input type="checkbox" id="run" checked> PLC in RUN</label>
+  <label><input type="checkbox" id="pause"> Pause</label>
+  <label>Speed <select id="speed"><option>0.25</option><option selected>1</option><option>4</option><option>25</option></select></label>
+  <button class="scene-btn" id="theme">Toggle theme</button>
+  <button class="scene-btn" id="resetAll">Reset all</button>
+</header>
+<div class="grid" id="grid"></div>
+
+<script src="../js/content/scene-defs.js"></script>
+<script src="../js/scenes/registry.js"></script>
+<script src="../js/scenes/motor.js"></script>
+<script src="../js/scenes/fwdrev.js"></script>
+<script src="../js/scenes/traffic.js"></script>
+<script src="../js/scenes/parking.js"></script>
+<script src="../js/scenes/tank.js"></script>
+<script src="../js/scenes/conveyor.js"></script>
+<script>
+(function () {
+  'use strict';
+  const grid = document.getElementById('grid');
+  const runBox = document.getElementById('run');
+  const scenes = {};
+
+  for (const def of PLC.SCENE_DEFS) {
+    if (!PLC.SCENES[def.id]) continue;
+    const card = document.createElement('section');
+    card.className = 'card';
+    card.innerHTML = `<h2>${def.name} <small style="color:var(--muted)">(${def.id})</small></h2>`;
+    const host = document.createElement('div'); host.className = 'host';
+    const io = document.createElement('div'); io.className = 'io';
+    const inp = document.createElement('div'); inp.className = 'inputs';
+    const msg = document.createElement('div'); msg.className = 'msg';
+    card.append(host, io, inp, msg);
+    grid.appendChild(card);
+
+    const S = { def, outputs: {}, inputs: {}, messages: [], setCount: 0 };
+    for (const addr of Object.keys(def.outputs)) {
+      S.outputs[addr] = 0;
+      const l = document.createElement('label');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.addr = addr;
+      cb.addEventListener('change', () => { S.outputs[addr] = cb.checked ? 1 : 0; });
+      l.append(cb, document.createTextNode(`${addr} ${def.outputs[addr].label}`));
+      io.appendChild(l);
+      S.checkbox = S.checkbox || {}; S.checkbox[addr] = cb;
+    }
+    for (const [addr, d] of Object.entries(def.inputs)) if (d.device !== 'sensor') S.inputs[addr] = 0;
+    const api = {
+      def,
+      out: (a) => (runBox.checked ? S.outputs[a] || 0 : 0),
+      get: (a) => S.inputs[a] || 0,
+      set: (a, v) => {
+        if (!def.inputs[a] || def.inputs[a].device !== 'sensor') throw new Error(`${def.id}: set() on non-sensor input ${a}`);
+        S.inputs[a] = v ? 1 : 0; S.setCount++;
+      },
+      running: () => runBox.checked,
+      message: (text, level) => {
+        S.messages.push({ text, level });
+        msg.textContent = text; msg.className = 'msg ' + (level || 'info');
+      },
+    };
+    S.api = api;
+    S.inst = PLC.SCENES[def.id](host, api);
+    S.renderInputs = () => {
+      inp.textContent = 'inputs: ' + Object.keys(def.inputs).map((a) => `${a}=${S.inputs[a] ?? '-'}${def.inputs[a].device === 'sensor' ? '*' : ''}`).join('  ');
+    };
+    scenes[def.id] = S;
+  }
+
+  function setOut(id, addr, v) {
+    const S = scenes[id];
+    S.outputs[addr] = v ? 1 : 0;
+    if (S.checkbox[addr]) S.checkbox[addr].checked = !!v;
+  }
+  function frame(dt) {
+    for (const S of Object.values(scenes)) { S.inst.update(dt); S.renderInputs(); }
+  }
+  // Advance simulated time in frames of frameMs (for scripted tests).
+  function advance(ms, frameMs) {
+    frameMs = frameMs || 16;
+    for (let t = 0; t < ms; t += frameMs) frame(Math.min(frameMs, ms - t));
+  }
+
+  let manual = /manual/.test(location.search), last = performance.now();
+  function loop(now) {
+    const wall = Math.min(100, now - last); last = now;
+    if (!manual) {
+      const speed = +document.getElementById('speed').value;
+      const dt = document.getElementById('pause').checked ? 0 : Math.min(250, wall * speed);
+      frame(dt);
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  document.getElementById('theme').addEventListener('click', () => {
+    const r = document.documentElement;
+    r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+  });
+  document.getElementById('resetAll').addEventListener('click', () => { for (const S of Object.values(scenes)) S.inst.reset(); });
+
+  window.SMOKE = { scenes, setOut, advance, frame, setManual: (v) => { manual = v; } };
+})();
+</script>
+</body>
+</html>
